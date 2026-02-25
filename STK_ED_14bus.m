@@ -8,21 +8,20 @@ n = size(mpc.bus, 1);
 num_gens = size(mpc.gen, 1);
 
 %a = mpc.gencost(:, 5);
-%a = mpc.gencost(:, 5);
-a = [0.043;0.025;0.025;0.02;0.03];
+a = [0.043;0.02;0.025;0.02;0.03];
 %b = mpc.gencost(:, 6);
-b = [30;20;45;35;50];
+b = [20;20;45;35;50];
 %c = mpc.gencost(:, 7);
 c = [0;0;0;0;0];
 gen_buses = mpc.gen(:, 1);
 % pmin and pmax
 %pmin = mpc.gen(:, 6);
 %pmax = mpc.gen(:, 7);
-pmin = [2;2;2;2;2];
-pmax = [150;100;300;250;200];
+pmin = [5;5;5;5;5];
+pmax = [100;150;200;250;250];
 
 % Bus demand data (in MW)
-Pd = mpc.bus(:, 3)*3.85; 
+Pd = mpc.bus(:, 3)*3.45; 
 
 % Create DC Power Flow B matrix
 B = makeBdc(mpc);

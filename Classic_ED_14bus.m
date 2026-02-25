@@ -2,23 +2,28 @@ clc;
 clear;
 close all;
 
-%%
+%% 
 mpc = loadcase('case14');
 n = size(mpc.bus, 1);
 num_gens = size(mpc.gen, 1);
 % cost
-a = [0.043;0.025;0.025;0.02;0.03];
-b = [30;20;45;35;50];
+gendata = mpc.gencost(:, 5:7);
+%a = mpc.gencost(:, 5);
+a = [0.043;0.02;0.025;0.02;0.03];
+%b = mpc.gencost(:, 6);
+b = [20;20;45;35;50];
+%c = mpc.gencost(:, 7);
 c = [0;0;0;0;0];
 gen_buses = mpc.gen(:, 1);
 % pmin and pmax
-pmin = [2;2;2;2;2];
-pmax = [150;100;300;250;200];
-Pd = mpc.bus(:, 3)*3.85;
+%pmin = mpc.gen(:, 6);
+%pmax = mpc.gen(:, 7);
+pmin = [5;5;5;5;5];
+pmax = [100;150;200;250;250];
+Pd = mpc.bus(:, 3)*3.46;
 % B matrix
 Bdc = makeBdc(mpc);
 B = full(Bdc);
-
 %%
 n_vars = num_gens + n;
 
@@ -33,24 +38,33 @@ ub = Inf(n_vars, 1);
 lb(1:num_gens) = pmin;
 ub(1:num_gens) = pmax;
 
-Aeq = zeros(n, n_vars);
-beq = zeros(n, 1);
+Aeq = zeros(n + 1, n_vars);
+beq = zeros(n + 1, 1);
 
-current_row = 1;
+Aeq(1, 1:num_gens) = 1;
+beq(1) = sum(Pd);
+
+current_row = 2;
 for i = 1:n
     gen_idx_at_bus_i = find(gen_buses == i);
     if ~isempty(gen_idx_at_bus_i)
         Aeq(current_row, gen_idx_at_bus_i) = 1;
     end
     
-    Aeq(current_row, num_gens + 1:end) = -B(i, :);
+    Aeq(current_row, num_gens + i) = -sum(B(i, :));
+    for j_bus = 1:n
+        if i ~= j_bus
+            Aeq(current_row, num_gens + j_bus) = Aeq(current_row, num_gens + j_bus) + B(i, j_bus);
+        end
+    end
     
-    beq(current_row) = Pd(i);
+    Aeq(current_row, num_gens + i) = Aeq(current_row, num_gens + i) - Pd(i); % ????? ???
+    beq(current_row) = 0;
     
     current_row = current_row + 1;
 end
 
-ref_bus = 1;
+ref_bus = 1; 
 ref_delta_idx = num_gens + ref_bus;
 Aeq = [Aeq; zeros(1, n_vars)];
 Aeq(end, ref_delta_idx) = 1;
@@ -64,7 +78,6 @@ options = optimoptions('quadprog', 'Display', 'off');
 if exitflag > 0
     Pg_opt = x_opt(1:num_gens);
     Delta_opt = x_opt(num_gens + 1:end);
-    % LMPs are the Lagrange multipliers for the power balance constraints
     LMP_values = lambda.eqlin(1:n);
     
     cost_per_gen = zeros(num_gens, 1);
@@ -115,16 +128,16 @@ if exitflag > 0
     fprintf('---------------------------------------------------\n');
 
     %% Plot LMPs
-    figure;
-    bar(1:n, LMP_values, 'FaceColor', [0.1 0.4 0.8]);
-    xlabel('Bus Number');
-    ylabel('Locational Marginal Price (LMP) [$/MWh]');
-    title('Locational Marginal Prices (LMPs) at Each Bus (IEEE 14-bus)');
-    grid on;
-    box on;
-    xticks(1:n);
-    xticklabs = arrayfun(@(x) sprintf('Bus %d', x), 1:n, 'UniformOutput', false);
-    xticklabels(xticklabs);
+  %  figure;
+   % bar(1:n, LMP_values, 'FaceColor', [0.1 0.4 0.8]);
+    %xlabel('Bus Number');
+    %ylabel('Locational Marginal Price (LMP) [$/MWh]');
+    %title('Locational Marginal Prices (LMPs) at Each Bus (IEEE 14-bus)');
+    %grid on;
+    %box on;
+    %xticks(1:n);
+    %xticklabs = arrayfun(@(x) sprintf('Bus %d', x), 1:n, 'UniformOutput', false);
+    %xticklabels(xticklabs);
 
 else
     fprintf('\nOptimization failed. Exitflag: %d\n', exitflag);
